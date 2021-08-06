@@ -17,6 +17,8 @@
 #include "PushNotificationChannel.h"
 #include "externs.h"
 #include <string_view>
+#include <frameworkudk/PushNotifications.h>
+#include <iostream>
 
 using namespace std::literals;
 
@@ -67,8 +69,20 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
     {
         THROW_HR_IF(E_INVALIDARG, (remoteId == winrt::guid()));
 
+        std::cout << "ELx - PushNotifications_RegisterFullTrustApplication\n";
+        PushNotifications_RegisterFullTrustApplication(L"foo", remoteId);
+		
         // API supports channel requests only for packaged applications for v0.8 version
-        THROW_HR_IF(E_NOTIMPL, !AppModel::Identity::IsPackagedProcess());
+        //THROW_HR_IF(E_NOTIMPL, !AppModel::Identity::IsPackagedProcess());
+        if (!AppModel::Identity::IsPackagedProcess())
+        {
+            // PushNotifications_RegisterFullTrustApplication(L"foo", remoteId);
+
+            co_return winrt::make<PushNotificationCreateChannelResult>(
+                nullptr,
+                S_OK,
+                PushNotificationChannelStatus::CompletedSuccess);
+        }
 
         auto cancellation{ co_await winrt::get_cancellation_token() };
 
@@ -131,6 +145,11 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
     PushNotificationRegistrationToken PushNotificationManager::RegisterActivator(PushNotificationActivationInfo const& details)
     {
         THROW_HR_IF_NULL(E_INVALIDARG, details);
+
+        if (!AppModel::Identity::IsPackagedProcess())
+        {
+            return PushNotificationRegistrationToken { 0, nullptr };
+        }
 
         GUID taskClsid = details.TaskClsid();
         THROW_HR_IF(E_INVALIDARG, taskClsid == GUID_NULL);
@@ -232,6 +251,12 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
     void PushNotificationManager::UnregisterActivator(PushNotificationRegistrationToken const& token, PushNotificationRegistrationOptions const& options)
     {
         THROW_HR_IF_NULL(E_INVALIDARG, token);
+
+        if (!AppModel::Identity::IsPackagedProcess())
+        {
+            return;
+        }
+		
         if (WI_IsFlagSet(options, PushNotificationRegistrationOptions::PushTrigger))
         {
             auto taskRegistration = token.TaskRegistration();
