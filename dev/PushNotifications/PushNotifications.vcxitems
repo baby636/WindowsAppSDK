@@ -10,7 +10,7 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
-    <ItemGroup>
+  <ItemGroup>
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
@@ -28,6 +28,7 @@
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)externs.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)GetRawNotificationEventArgs.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Insight.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)PushNotificationActivationInfo.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)PushNotificationBackgroundTask.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)PushNotificationChannel.h" />
