@@ -50,7 +50,10 @@ HRESULT ChannelRequestHelper(IAsyncOperationWithProgress<PushNotificationCreateC
         return result.ExtendedError(); // did not produce a channel
     }
 
-    result.Channel().Close();
+    if (Test::AppModel::IsPackagedProcess())
+    {
+        result.Channel().Close();
+    }
     return S_OK;
 }
 
@@ -302,48 +305,71 @@ std::string unitTestNameFromLaunchArguments(const ILaunchActivatedEventArgs& lau
 
 int main() try
 {
+    printf("elx - 1\n");
     bool testResult = false;
     auto scope_exit = wil::scope_exit([&] {
         if (g_appToken)
         {
+            printf("elx - 2\n");
             PushNotificationManager::UnregisterActivator(g_appToken, PushNotificationRegistrationOptions::PushTrigger | PushNotificationRegistrationOptions::ComActivator);
         }
 
         ::Test::Bootstrap::CleanupBootstrap();
     });
 
-
+    printf("elx - 4\n");
+    if(::Test::Bootstrap::NeedDynamicDependencies())
+    {
+        printf("elx - 5\n");
+    }
     ::Test::Bootstrap::SetupBootstrap();
+
+    printf("elx - 6\n");
 
     PushNotificationActivationInfo info(
         PushNotificationRegistrationOptions::PushTrigger | PushNotificationRegistrationOptions::ComActivator,
         winrt::guid(c_comServerId)); // same clsid as app manifest
 
+    printf("elx - 7\n");
     g_appToken = PushNotificationManager::RegisterActivator(info);
-    
+
+    printf("elx - 8\n");
     auto args = AppInstance::GetCurrent().GetActivatedEventArgs();
     auto kind = args.Kind();
 
+    printf("elx - 9\n");
     if (kind == ExtendedActivationKind::Launch)
     {
+        printf("elx - 10\n");
+
         auto unitTest = unitTestNameFromLaunchArguments(args.Data().as<ILaunchActivatedEventArgs>());
         std::cout << unitTest << std::endl;
 
+        printf("elx - 11 - unitTest: %s\n", unitTest.c_str());
         testResult = runUnitTest(unitTest);
+        printf("elx - 12\n");
     }
     else if (kind == ExtendedActivationKind::Push)
     {
+        printf("elx - 13\n");
         PushNotificationReceivedEventArgs pushArgs = args.Data().as<PushNotificationReceivedEventArgs>();
         auto payload = pushArgs.Payload();
         std::wstring payloadString(payload.begin(), payload.end());
 
+        printf("elx - 14\n");
         testResult = payloadString == c_rawNotificationPayload;
+        printf("elx - 15\n");
     }
 
+    printf("elx - 16\n");
+    char dontbehasty;
+    std::cin >> dontbehasty;
     return testResult ? 0 : 1; // We want 0 to be success and 1 failure
 }
 catch (...)
 {
     std::cout << winrt::to_string(winrt::to_message()) << std::endl;
+    char dontbehasty;
+    std::cin >> dontbehasty;
     return 1; // in the event of unhandled test crash
 }

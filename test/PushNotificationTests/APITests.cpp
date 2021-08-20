@@ -198,6 +198,11 @@ namespace Test::PushNotifications
             RunTest(L"ChannelRequestUsingRemoteId", channelTestWaitTime());
         }
 
+        TEST_METHOD(ChannelRequestUsingRemoteId_Unpackaged)
+        {
+            RunTestUnpackaged(L"ChannelRequestUsingRemoteId", channelTestWaitTime());
+        }
+
         TEST_METHOD(MultipleChannelClose)
         {
             RunTest(L"MultipleChannelClose", channelTestWaitTime());
