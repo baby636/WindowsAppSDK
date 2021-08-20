@@ -68,8 +68,8 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
 
     winrt::IAsyncOperationWithProgress<winrt::Microsoft::Windows::PushNotifications::PushNotificationCreateChannelResult, winrt::Microsoft::Windows::PushNotifications::PushNotificationCreateChannelStatus> PushNotificationManager::CreateChannelAsync(const winrt::guid &remoteId)
     {
-        std::cout << "ELx - BooleanTelemetryEvent\n";
-        InsightsSample::BooleanTelemetryEvent(true);
+        std::cout << "ELx - TextPayloadEvent\n";
+        InsightsSample::TextPayloadEvent(L"ELx was here!!!");  //BooleanTelemetryEvent(true);
 
         THROW_HR_IF(E_INVALIDARG, (remoteId == winrt::guid()));
 
