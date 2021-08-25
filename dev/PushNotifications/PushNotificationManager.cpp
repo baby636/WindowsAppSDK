@@ -19,7 +19,7 @@
 #include <string_view>
 #include <frameworkudk/PushNotifications.h>
 #include <iostream>
-#include "Insight.h"
+#include "PushNotificationTelemetry.h"
 
 using namespace std::literals;
 
@@ -69,9 +69,9 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
     winrt::IAsyncOperationWithProgress<winrt::Microsoft::Windows::PushNotifications::PushNotificationCreateChannelResult, winrt::Microsoft::Windows::PushNotifications::PushNotificationCreateChannelStatus> PushNotificationManager::CreateChannelAsync(const winrt::guid &remoteId)
     {
         std::cout << "ELx - TextPayloadEvent\n";
-        PushTelemetry::TextPayloadEvent(L"ELx was here!!!");
+        PushNotificationTelemetry::TextPayloadEvent(L"ELx was here!!!");
         std::string cv("correlationVector");
-        PushTelemetry::ToastActivationStart(L"appUserModelId", L"activationType", cv);
+        PushNotificationTelemetry::ToastActivationStart(L"appUserModelId", L"activationType", cv);
 
         THROW_HR_IF(E_INVALIDARG, (remoteId == winrt::guid()));
 
