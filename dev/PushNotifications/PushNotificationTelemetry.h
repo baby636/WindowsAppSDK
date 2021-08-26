@@ -4,7 +4,7 @@
 #pragma once
 
 #include "WindowsAppSDKInsights.h"
-
+#include <wrl\wrappers\corewrappers.h>
 
 DECLARE_TRACELOGGING_CLASS(PushNotificationTelemetryProvider, "Microsoft.WindowsAppSDK.Notifications.PushNotificationTelemetry", (0x7c1b07ef, 0xa7c0, 0x56d1, 0x54, 0x56, 0x38, 0x5e, 0xbd, 0x44, 0x12, 0xb2));
 // {7c1b07ef-a7c0-56d1-5456-385ebd4412b2}
@@ -13,101 +13,106 @@ class PushNotificationTelemetry : public wil::TraceLoggingProvider
 {
     IMPLEMENT_TELEMETRY_CLASS(PushNotificationTelemetry, PushNotificationTelemetryProvider);
 
-    //IMPLEMENT_TRACELOGGING_CLASS(PushTelemetry, "Microsoft.WindowsAppSDK.Insights.PushTelemetry",
-        // {e6bc6071-c4fd-5ecd-8ec8-f2b2f46cc173}
-    //    (0xe6bc6071, 0xc4fd, 0x5ecd, 0x8e, 0xc8, 0xf2, 0xb2, 0xf4, 0x6c, 0xc1, 0x73));
+public:
+#if 0
+    static void GetCorrelationVector(std::string& cv) noexcept try
+    {
+        char correlationVector[CORRELATION_VECTOR_STRING_LENGTH]{ '\0' };
+        TraceLoggingCorrelationVector cvGenerated;
 
-    // {1870FBB0-2247-44D8-BF46-B02130A8A477}
-    //IMPLEMENT_TRACELOGGING_CLASS(InsightsSample, "Microsoft.Windows.Notifications.WpnApis", (0x1870fbb0, 0x2247, 0x44d8, 0xbf, 0x46, 0xb0, 0x21, 0x30, 0xa8, 0xa4, 0x77));
-
-    // Event that contains a single bool value as payload
-    DEFINE_COMPLIANT_TELEMETRY_EVENT_BOOL(BooleanTelemetryEvent, // Event name
-        PDT_ProductAndServiceUsage, // Privacy data data for events. Check wil/traceloggingconfig.h for a full list
-        value/* value to be logged*/);
-
-
-    // Event that contains a string as payload
-    DEFINE_COMPLIANT_TELEMETRY_EVENT_STRING(TextPayloadEvent, // Event name
-        PDT_ProductAndServiceUsage, // Privacy data data for events. Check wil/traceloggingconfig.h for a full list
-        value/* value to be logged*/);
-
-    // Event that contains a single user define data type payload
-    DEFINE_COMPLIANT_TELEMETRY_EVENT_PARAM1(EventWithUserDefinedType, //Event name
-        PDT_ProductAndServiceUsage, // Privacy data data for events. Check wil/traceloggingconfig.h for a full list
-        PCWSTR, // Payload data type
-        value);
-
-    DEFINE_COMPLIANT_TELEMETRY_EVENT_PARAM1_CV(ToastActivationStart,
-        PDT_ProductAndServicePerformance,
-        PCWSTR, // Payload data type
-        value);
-
-    DEFINE_COMPLIANT_TELEMETRY_EVENT_PARAM2_CV(ToastActivationStart,
-        PDT_ProductAndServicePerformance,
-        PCWSTR, // Payload data type
-        value,
-        PCWSTR, // Payload data type
-        value2);
-
+        // Increment and fetch the correlation vector.
+        bool cvFetchSucceeded = cvGenerated.Increment(correlationVector);
+        THROW_HR_IF(E_UNEXPECTED, !cvFetchSucceeded);
+        cv = correlationVector;
+    }
+    CATCH_LOG();
+#endif
     DEFINE_EVENT_METHOD(ToastActivationStart)(
         _In_ PCWSTR appUserModelId,
         _In_ PCWSTR activationType,
         std::string& correlationVector) noexcept
     {
-        //ToastActivationStart(activationType, correlationVector.c_str());
-        ToastActivationStart(appUserModelId, activationType, correlationVector.c_str());
-            //TelemetryPrivacyDataTag(PDT_ProductAndServicePerformance),
-            //TraceLoggingValue(CensorFilePath(appUserModelId), "AppUserModelId"),
-            //TraceLoggingValue(activationType, "ActivationType"),
-            //TraceLoggingString(correlationVector.c_str(), "CV"),
-            //TraceLoggingCVString(correlationVector.c_str()));
-#if 0
-        TraceLoggingWrite(TraceLoggingType::Provider(), "ToastActivationStart", TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
-            //"ToastActivationStart");
-            //TelemetryPrivacyDataTag(PDT_ProductAndServicePerformance),
-            //TraceLoggingValue(CensorFilePath(appUserModelId), "AppUserModelId"),
-            //TraceLoggingValue(activationType, "ActivationType"),
-            //TraceLoggingString(correlationVector.c_str(), "CV"),
-            //TraceLoggingCVString(correlationVector.c_str()));
-#endif
-#if 0
         if (c_maxEventLimit >= UpdateLogEventCount())
         {
-            TraceLoggingClassWriteMeasure(
-                "ToastActivationStart",
-                TelemetryPrivacyDataTag(PDT_ProductAndServicePerformance),
-                TraceLoggingValue(CensorFilePath(appUserModelId), "AppUserModelId"),
-                TraceLoggingValue(activationType, "ActivationType"),
-                TraceLoggingString(correlationVector.c_str(), "CV"),
-                TraceLoggingCVString(correlationVector.c_str()));
+            ToastActivationStart(CensorFilePath(appUserModelId), activationType, correlationVector.c_str());
         }
-#endif
     }
 
     DEFINE_EVENT_METHOD(ToastActivationStop)(
         _In_ PCWSTR appUserModelId,
         _In_ PCWSTR activationType,
-        _In_ HSTRING argument,
+        _In_ winrt::hstring argument,
         ULONG inputCount,
         HRESULT hr,
         std::string& correlationVector) noexcept
     {
-#if 0
         if (c_maxEventLimit >= UpdateLogEventCount())
         {
-            TraceLoggingClassWriteMeasure(
-                "ToastActivationStop",
-                TelemetryPrivacyDataTag(PDT_ProductAndServicePerformance),
-                TraceLoggingValue(CensorFilePath(appUserModelId), "AppUserModelId"),
-                TraceLoggingValue(activationType, "ActivationType"),
-                TraceLoggingUInt64(argument == nullptr ? 0UL : wcslen(StringReference(argument).GetRawBuffer(nullptr)), "ArgumentLength"),
-                TraceLoggingUInt32(inputCount, "InputCount"),
-                TraceLoggingString(correlationVector.c_str(), "CV"),
-                TraceLoggingCVString(correlationVector.c_str()),
-                TraceLoggingHexUInt32(hr, "OperationResult"));
+            ToastActivationStop(CensorFilePath(appUserModelId), activationType, argument.size(), inputCount, hr, correlationVector.c_str());
         }
-#endif
     }
+
+    DEFINE_EVENT_METHOD(ChannelRequestedByApi)(
+        HRESULT hr,
+        bool appIdProvided,
+        const std::wstring pkgFullName,
+        const std::wstring appUserModelId,
+        const std::wstring remoteId) noexcept try
+        {
+            if (c_maxEventLimit >= UpdateLogEventCount())
+            {
+                ChannelRequestedByApi_(hr, appIdProvided, pkgFullName.c_str(), CensorFilePath(appUserModelId.c_str()), remoteId.c_str());
+            }
+        }
+        CATCH_LOG()
+
+
+    DEFINE_EVENT_METHOD(ChannelClosedbyApi)(
+        HRESULT hr,
+        const std::wstring appUserModelId,
+        const std::wstring channelId) noexcept try
+        {
+            if (c_maxEventLimit >= UpdateLogEventCount())
+            {
+                ChannelClosedbyApi_(hr, CensorFilePath(appUserModelId.c_str()), channelId.c_str());
+            }
+        }
+        CATCH_LOG()
+
+private:
+    //Microsoft::WRL::Wrappers::CriticalSection m_lock;
+    ULONGLONG m_lastFiredTick = 0;
+    UINT m_eventCount = 0;
+
+    static constexpr ULONGLONG c_logPeriod = 1000; // One second
+    static constexpr UINT c_maxEventLimit = 10;
+
+    DEFINE_COMPLIANT_TELEMETRY_EVENT_PARAM2_CV(ToastActivationStart,
+        PDT_ProductAndServicePerformance,
+        PCWSTR, AppUserModelId,
+        PCWSTR, ActivationType);
+
+    DEFINE_COMPLIANT_TELEMETRY_EVENT_PARAM5_CV(ToastActivationStop,
+        PDT_ProductAndServicePerformance,
+        PCWSTR, AppUserModelId,
+        PCWSTR, ActivationType,
+        UINT64, ArgumentLength,
+        UINT32, InputCount,
+        UINT32, OperationResult);
+
+    DEFINE_COMPLIANT_TELEMETRY_EVENT_PARAM5(ChannelRequestedByApi_,
+        PDT_ProductAndServicePerformance,
+        UINT32, OperationResult,
+        BOOL,   AppIdProvided,
+        PCWSTR, PackageName,
+        PCWSTR, AppUserModelId,
+        PCWSTR, RemoteId);
+
+    DEFINE_COMPLIANT_TELEMETRY_EVENT_PARAM3(ChannelClosedbyApi_,
+        PDT_ProductAndServicePerformance,
+        UINT32, OperationResult,
+        bool,   AppIdProvided,
+        PCWSTR, ChannelId);
 
     PCWSTR CensorFilePath(_In_opt_ PCWSTR path) noexcept
     {
@@ -117,5 +122,23 @@ class PushNotificationTelemetry : public wil::TraceLoggingProvider
         }
 
         return path;
+    }
+
+    UINT UpdateLogEventCount() noexcept
+    {
+        ULONGLONG currentTick = GetTickCount64();
+
+        //auto lock = m_lock.Lock();
+
+        // Only fire limiting events every log period to prevent too many events from being fired
+        if ((currentTick - m_lastFiredTick) > c_logPeriod)
+        {
+            m_eventCount = 0;
+            m_lastFiredTick = currentTick;
+        }
+
+        m_eventCount++;
+
+        return m_eventCount;
     }
 };

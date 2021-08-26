@@ -21,6 +21,7 @@
 #include <iostream>
 #include "PushNotificationTelemetry.h"
 
+
 using namespace std::literals;
 
 constexpr std::wstring_view backgroundTaskName = L"PushBackgroundTaskName"sv;
@@ -68,10 +69,18 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
 
     winrt::IAsyncOperationWithProgress<winrt::Microsoft::Windows::PushNotifications::PushNotificationCreateChannelResult, winrt::Microsoft::Windows::PushNotifications::PushNotificationCreateChannelStatus> PushNotificationManager::CreateChannelAsync(const winrt::guid &remoteId)
     {
-        std::cout << "ELx - TextPayloadEvent\n";
-        PushNotificationTelemetry::TextPayloadEvent(L"ELx was here!!!");
+        std::cout << "ELx - ToastActivationStart\n";
         std::string cv("correlationVector");
         PushNotificationTelemetry::ToastActivationStart(L"appUserModelId", L"activationType", cv);
+
+        std::cout << "ELx - ToastActivationStop\n";
+        PushNotificationTelemetry::ToastActivationStop(L"appUserModelId", L"activationType", hstring(L"argument"), 0, S_OK, cv);
+
+        std::cout << "ELx - ChannelRequestedbyApi\n";
+        PushNotificationTelemetry::ChannelRequestedByApi(S_OK, true /*appIdProvided*/, L"pkgFullName", L"appUserModelId", L"remoteId");
+
+        std::cout << "ELx - ChannelClosedbyApi\n";
+        PushNotificationTelemetry::ChannelClosedbyApi(S_OK, L"appUserModelId", L"channelId");
 
         THROW_HR_IF(E_INVALIDARG, (remoteId == winrt::guid()));
 
