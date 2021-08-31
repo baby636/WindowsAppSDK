@@ -17,6 +17,8 @@
 #include "PushNotificationChannel.h"
 #include "externs.h"
 #include <string_view>
+#include <frameworkudk/pushnotifications.h>
+#include "NotificationsLongRunningProcess_h.h"
 
 using namespace std::literals;
 
@@ -62,12 +64,62 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
         }
     }
 
+    void PushNotificationManager::RegisterUnpackagedApplicationHelper(
+        const winrt::guid& remoteId,
+        _Out_ wil::unique_cotaskmem_string &unpackagedAppUserModelId)
+    {
+        wchar_t processName[1024];
+        THROW_HR_IF(ERROR_FILE_NOT_FOUND, GetModuleFileNameExW(GetCurrentProcess(), NULL, processName, sizeof(processName) / sizeof(processName[0])) == 0);
+
+        THROW_IF_FAILED(::CoInitializeEx(nullptr, COINITBASE_MULTITHREADED));
+
+        auto scopeExit = wil::scope_exit(
+            [&]() { CoUninitialize(); });
+
+        wil::com_ptr<INotificationsLongRunningPlatform> notificationPlatform{
+            wil::CoCreateInstance<NotificationsLongRunningPlatform, INotificationsLongRunningPlatform>(CLSCTX_LOCAL_SERVER) };
+
+        winrt::check_hresult(notificationPlatform->RegisterFullTrustApplication(processName, remoteId, &unpackagedAppUserModelId));
+    }
+
+    winrt::hresult PushNotificationManager::CreateChannelWithRemoteIdHelper(const winrt::guid& remoteId, ChannelDetails& channelInfo)
+    {
+        wchar_t appUserModelId[APPLICATION_USER_MODEL_ID_MAX_LENGTH] = {};
+        UINT32 appUserModelIdSize = ARRAYSIZE(appUserModelId);
+
+        THROW_IF_FAILED(GetCurrentApplicationUserModelId(&appUserModelIdSize, appUserModelId));
+
+        THROW_HR_IF(E_INVALIDARG, (appUserModelIdSize > APPLICATION_USER_MODEL_ID_MAX_LENGTH) || (appUserModelIdSize == 0));
+
+        HRESULT operationalCode;
+        ABI::Windows::Foundation::DateTime channelexpirytime{};
+
+        HRESULT hr = PushNotifications_CreateChannelWithRemoteIdentifier(
+            appUserModelId,
+            remoteId,
+            &operationalCode,
+            &channelInfo.channelId,
+            &channelInfo.channelUri,
+            &channelexpirytime);
+
+        /*
+           RemoteId APIs are not applicable for downlevel OS versions.
+           So we get error E_NOTIMPL and we fallback to calling into
+           Public WinRT API CreatePushNotificationChannelForApplicationAsync
+           to request for channels
+        */
+        THROW_HR_IF(hr, (hr != E_NOTIMPL) && (hr != S_OK));
+        THROW_HR_IF(operationalCode, (hr == S_OK) && (operationalCode != S_OK));
+
+        winrt::copy_from_abi(channelInfo.channelExpiryTime, &channelexpirytime);
+        channelInfo.appUserModelId = wil::make_cotaskmem_string(appUserModelId);
+
+        return hr;
+    }
+
     winrt::IAsyncOperationWithProgress<winrt::Microsoft::Windows::PushNotifications::PushNotificationCreateChannelResult, winrt::Microsoft::Windows::PushNotifications::PushNotificationCreateChannelStatus> PushNotificationManager::CreateChannelAsync(const winrt::guid &remoteId)
     {
         THROW_HR_IF(E_INVALIDARG, (remoteId == winrt::guid()));
-
-        // API supports channel requests only for packaged applications for v0.8 version
-        THROW_HR_IF(E_NOTIMPL, !AppModel::Identity::IsPackagedProcess());
 
         auto cancellation{ co_await winrt::get_cancellation_token() };
 
@@ -91,16 +143,46 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
         {
             try
             {
-                PushNotificationChannelManager channelManager{};
-                winrt::PushNotificationChannel pushChannelReceived{ nullptr };
+                if (IsActivatorSupported(PushNotificationRegistrationOptions::PushTrigger))
+                {
+                    ChannelDetails channelInfo{};
+                    hresult hr = CreateChannelWithRemoteIdHelper(remoteId, channelInfo);
 
-                pushChannelReceived = co_await channelManager.CreatePushNotificationChannelForApplicationAsync();
+                    if (SUCCEEDED(hr))
+                    {
+                        co_return winrt::make<PushNotificationCreateChannelResult>(
+                            winrt::make<PushNotificationChannel>(channelInfo.channelUri.get(), channelInfo.channelId.get(),  channelInfo.appUserModelId.get(), channelInfo.channelExpiryTime),
+                            hr,
+                            PushNotificationChannelStatus::CompletedSuccess);
+                    }
+                    else if (hr == E_NOTIMPL)
+                    {
+                        PushNotificationChannelManager channelManager{};
+                        winrt::PushNotificationChannel pushChannelReceived{ nullptr };
 
-                co_return winrt::make<PushNotificationCreateChannelResult>(
-                    winrt::make<PushNotificationChannel>(pushChannelReceived),
-                    S_OK,
-                    PushNotificationChannelStatus::CompletedSuccess);
+                        pushChannelReceived = co_await channelManager.CreatePushNotificationChannelForApplicationAsync();
 
+                        co_return winrt::make<PushNotificationCreateChannelResult>(
+                            winrt::make<PushNotificationChannel>(pushChannelReceived),
+                            S_OK,
+                            PushNotificationChannelStatus::CompletedSuccess);
+                    }
+                }
+                else
+                {
+                    wil::unique_cotaskmem_string unpackagedAppUserModelId;
+                    RegisterUnpackagedApplicationHelper(remoteId, unpackagedAppUserModelId);
+
+                    PushNotificationChannelManager channelManager{};
+                    winrt::PushNotificationChannel pushChannelReceived{ nullptr };
+
+                    pushChannelReceived = co_await channelManager.CreatePushNotificationChannelForApplicationAsync(unpackagedAppUserModelId.get());
+
+                    co_return winrt::make<PushNotificationCreateChannelResult>(
+                        winrt::make<PushNotificationChannel>(pushChannelReceived),
+                        S_OK,
+                        PushNotificationChannelStatus::CompletedSuccess);
+                }
             }
             catch (...)
             {

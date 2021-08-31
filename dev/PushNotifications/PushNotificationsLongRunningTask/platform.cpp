@@ -4,6 +4,7 @@
 
 #include "platform.h"
 #include "platformfactory.h"
+#include <FrameworkUdk/PushNotifications.h>
 
 void NotificationsLongRunningPlatformImpl::Initialize()
 {
@@ -46,12 +47,58 @@ void NotificationsLongRunningPlatformImpl::WaitForWinMainEvent()
     m_shutdownTimerManager->Wait();
 }
 
-// Example of one function. We will add more as we need them.
-STDMETHODIMP_(HRESULT __stdcall) NotificationsLongRunningPlatformImpl::RegisterFullTrustApplication(_In_ PCWSTR /*processName*/, _In_ GUID /*remoteId*/, _Out_ GUID* /*appId*/) noexcept
+void NotificationsLongRunningPlatformImpl::AddToRegistry(const std::wstring& processName, std::wstring appId)
 {
-    auto lock = m_lock.lock_shared();
-    RETURN_HR_IF(WPN_E_PLATFORM_UNAVAILABLE, m_shutdown);
-    
-    return E_NOTIMPL;
+    std::wstring subkey = L"Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications\\LongRunningProcess";
+
+    wil::unique_hkey hKeyResult;
+
+    THROW_IF_WIN32_ERROR(RegCreateKeyEx(
+        HKEY_CURRENT_USER,
+        subkey.c_str(),
+        0,
+        nullptr,
+        REG_OPTION_NON_VOLATILE,
+        KEY_ALL_ACCESS,
+        nullptr,
+        &hKeyResult,
+        nullptr));
+
+    THROW_IF_WIN32_ERROR(RegSetKeyValue(
+        hKeyResult.get(),
+        nullptr,
+        appId.c_str(),
+        REG_SZ,
+        processName.c_str(),
+        static_cast<DWORD>(sizeof(WCHAR) * processName.size())));
 }
 
+void NotificationsLongRunningPlatformImpl::GetAppIdentifier(const std::wstring processName)
+{
+    if (m_appIdMap.find(processName) == m_appIdMap.end())
+    {
+        GUID guidReference;
+        THROW_IF_FAILED(CoCreateGuid(&guidReference));
+
+        wil::unique_cotaskmem_string guidStr;
+        THROW_IF_FAILED(StringFromCLSID(guidReference, &guidStr));
+
+        AddToRegistry(processName, guidStr.get());
+        m_appIdMap[processName] = guidStr.get();
+    }
+}
+
+STDMETHODIMP_(HRESULT __stdcall) NotificationsLongRunningPlatformImpl::RegisterFullTrustApplication(
+    _In_ PCWSTR processName, GUID remoteId, _Out_ PWSTR* appId) noexcept try
+{
+    auto lock = m_lock.lock_shared();
+
+    GetAppIdentifier(processName);
+
+    THROW_IF_FAILED(PushNotifications_RegisterFullTrustApplication(m_appIdMap[processName].c_str(), remoteId));
+
+    *appId = wil::make_unique_string<wil::unique_cotaskmem_string>(m_appIdMap[processName].c_str()).get();
+
+    return S_OK;
+}
+CATCH_RETURN()

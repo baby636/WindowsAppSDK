@@ -18,7 +18,7 @@ Microsoft::WRL::RuntimeClass<
 
     /* IWpnLrpPlatform functions */
 
-    STDMETHOD(RegisterFullTrustApplication)(_In_ PCWSTR processName, _In_ GUID remoteId, _Out_ GUID* appId) noexcept;
+    STDMETHOD(RegisterFullTrustApplication)(_In_ PCWSTR processName, GUID remoteId, _Out_ PWSTR* appId) noexcept;
 
     /* Add your functions to retrieve the platform components */
 
@@ -28,8 +28,11 @@ private:
 
     bool m_initialized = false;
     bool m_shutdown = false;
+    std::map<std::wstring, std::wstring> m_appIdMap;
 
     std::unique_ptr<PlatformLifetimeTimerManager> m_shutdownTimerManager;
 
-    // Here we will define the Platform components i.e. the map wrappings
+    void GetAppIdentifier(std::wstring processName);
+
+    void AddToRegistry(const std::wstring& processName, const std::wstring appId);
 };
