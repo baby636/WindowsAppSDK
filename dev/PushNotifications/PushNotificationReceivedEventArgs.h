@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Microsoft.Windows.PushNotifications.PushNotificationReceivedEventArgs.g.h"
+#include <NotificationsLongRunningProcess_h.h>
 
 namespace winrt::Microsoft::Windows::PushNotifications::implementation
 {
@@ -9,6 +10,7 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
 
         PushNotificationReceivedEventArgs(winrt::Windows::ApplicationModel::Background::IBackgroundTaskInstance const& backgroundTask);
         PushNotificationReceivedEventArgs(winrt::Windows::Networking::PushNotifications::PushNotificationReceivedEventArgs const& args);
+        PushNotificationReceivedEventArgs(byte* payload, ULONG length);
 
         com_array<uint8_t> Payload();
         winrt::Windows::ApplicationModel::Background::BackgroundTaskDeferral GetDeferral();
@@ -17,9 +19,16 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
         bool Handled();
         void Handled(bool value);
 
+        std::vector<byte> BuildPayload(uint8_t* payload, ULONG payloadLength);
+
     private:
-        const winrt::Windows::Storage::Streams::IBuffer m_rawNotification{};
+
+        std::vector<byte> m_rawNotificationPayload;
+
         const winrt::Windows::ApplicationModel::Background::IBackgroundTaskInstance m_backgroundTaskInstance{};
         const winrt::Windows::Networking::PushNotifications::PushNotificationReceivedEventArgs m_args = nullptr;
+
+        bool m_isUnpackagedApp;
+        bool m_handledUnpackaged = false;
     };
 }
