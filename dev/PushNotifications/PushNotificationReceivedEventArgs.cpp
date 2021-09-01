@@ -10,6 +10,8 @@
 #include "PushNotificationReceivedEventArgs.h"
 #include "Microsoft.Windows.PushNotifications.PushNotificationReceivedEventArgs.g.cpp"
 #include <iostream>
+#include <string>
+//#include <codecvt>
 #include <externs.h>
 #include <PushNotificationDummyDeferral.h>
 #include "ValueMarshaling.h"
@@ -48,9 +50,23 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
         return { payload, payload + (length * sizeof(uint8_t)) };
     }
 
+    PushNotificationReceivedEventArgs::PushNotificationReceivedEventArgs(std::wstring& payload)
+    {
+        m_rawNotificationFromProtocol = Utf16ToUtf8(payload.c_str());
+    }
+
     winrt::com_array<uint8_t> PushNotificationReceivedEventArgs::Payload()
     {
-        return { m_rawNotificationPayload.data(), m_rawNotificationPayload.data() + (m_rawNotificationPayload.size() * sizeof(uint8_t)) };
+        if (m_rawNotification.data())
+        {
+            auto rawNotificationData = m_rawNotification.data();
+            return { rawNotificationData, rawNotificationData + (m_rawNotification.Length() * sizeof(uint8_t)) };
+        }
+        else
+        {
+            auto rawNotificationData = m_rawNotificationFromProtocol.c_str();
+            return { rawNotificationData, rawNotificationData + (m_rawNotificationFromProtocol.length() * sizeof(uint8_t)) };
+        }
     }
 
     winrt::BackgroundTaskDeferral PushNotificationReceivedEventArgs::GetDeferral()
@@ -118,6 +134,17 @@ namespace winrt::Microsoft::Windows::PushNotifications::implementation
         {
             m_handledUnpackaged = value;
         }
+    }
+
+    std::string PushNotificationReceivedEventArgs::Utf16ToUtf8(_In_z_ const wchar_t* utf16)
+    {
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, NULL, 0, nullptr, nullptr);
+        THROW_LAST_ERROR_IF(size_needed == 0);
+
+        std::string utf8(size_needed, 0);
+        int size = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, &utf8[0], size_needed, nullptr, nullptr);
+        THROW_LAST_ERROR_IF(size == 0);
+        return utf8;
     }
 }
 
