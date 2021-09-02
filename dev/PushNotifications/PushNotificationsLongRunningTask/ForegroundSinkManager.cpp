@@ -2,9 +2,6 @@
 
 #include "pch.h"
 
-#include <NotificationsLongRunningProcess_h.h>
-#include <ForegroundSinkManager.h>
-
 void ForegroundSinkManager::Add(std::wstring const& processName, IWpnForegroundSink* const& sink)
 {
     auto lock = m_lock.lock_exclusive();
@@ -27,7 +24,7 @@ bool ForegroundSinkManager::InvokeForegroundHandlers(std::wstring const& process
         BOOL foregroundHandled = true;
         if (FAILED(it->second->InvokeAll(payloadSize, payload.data(), &foregroundHandled)))
         {
-            Remove(processName);
+            m_foregroundMap.erase(processName);
             return false;
         }
         return foregroundHandled;
